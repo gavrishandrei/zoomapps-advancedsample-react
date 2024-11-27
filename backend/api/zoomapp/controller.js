@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 const { createProxyMiddleware } = require('http-proxy-middleware')
 const zoomApi = require('../../util/zoom-api')
 const zoomHelpers = require('../../util/zoom-helpers')
@@ -199,6 +200,7 @@ module.exports = {
       // tokenResponse.data.expires_in
 
       // 2b. Get Zoom user info from Zoom API
+      console.log('!!! zoomAccessToken: ', zoomAccessToken);
       const userResponse = await zoomApi.getZoomUser(zoomAccessToken)
       const zoomUserId = userResponse.data.id
 
@@ -283,6 +285,6 @@ module.exports = {
   proxy: createProxyMiddleware({
     target: process.env.ZOOM_APP_CLIENT_URL,
     changeOrigin: true,
-    ws: true,
+    ws: false,
   }),
 }

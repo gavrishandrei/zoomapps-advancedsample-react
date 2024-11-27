@@ -8,7 +8,7 @@ require('dotenv').config()
 
 const envars = [
   'PORT',
-  'SESSION_SECRET',
+  // 'SESSION_SECRET',
   'ZOOM_APP_CLIENT_URL',
   'ZOOM_APP_CLIENT_ID',
   'ZOOM_APP_CLIENT_SECRET',

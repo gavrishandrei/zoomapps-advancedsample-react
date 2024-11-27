@@ -48,6 +48,12 @@ const apis = [
     name: 'getRunningContext'
   },
   {
+    name: 'getEngagementContext'
+  },
+  {
+    name: 'getEngagementStatus'
+  },
+  {
     name: 'showNotification',
     options: {
       type: "info",

@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 const session = require('express-session')
 const SessionStore = require('connect-redis')(session)
 const redis = require('redis')

@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 const axios = require('axios')
 const { createProxyMiddleware } = require('http-proxy-middleware')
 const zoomApi = require('../../util/zoom-api')

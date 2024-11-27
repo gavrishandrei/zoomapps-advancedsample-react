@@ -1,6 +1,6 @@
 /* globals zoomSdk */
 import React, { useEffect, useState } from "react";
-import { Route, Redirect, useLocation } from "react-router-dom";
+import { Route, Navigate, useLocation } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import Auth0User from "./Auth0User";
 import Header from "./Header";
@@ -137,7 +137,7 @@ export const Authorization = (props) => {
 
   return (
     <>
-      <p>You are on this route: {location.pathname}</p>
+      <p>You are on this route: {location}</p>
 
       {!inGuestMode && <Button
         variant="primary"
@@ -151,7 +151,7 @@ export const Authorization = (props) => {
           navLinks={{ userInfo: "User Info", iframe: "IFrame", image: "Image" }}
         />
         <Route path="" exact>
-          <Redirect to="/userinfo" />
+          <Navigate to="/userinfo" />
         </Route>
         <Route path="/userinfo">
 
