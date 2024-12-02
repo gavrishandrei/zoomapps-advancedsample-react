@@ -16,6 +16,8 @@ const getZoomAccessToken = async (
     params['code_verifier'] = pkceVerifier
   }
 
+  console.log('!!!!! params', params)
+
   const tokenRequestParamString = zoomHelpers.createRequestParamString(params)
 
   return await axios({
@@ -76,9 +78,38 @@ const getDeeplink = async (accessToken) => {
   })
 }
 
+const getBackendAccessToken = async () => {
+  const ZOOM_CLIENT_ID = 'KpF7dckSi3wDDDgypuUA'
+  const ZOOM_CLIENT_SECRET = 'y89w59tQuEZwIh22ZuTZWWSUfyca4x7U'
+
+  return await axios({
+    url: `${process.env.ZOOM_HOST}/oauth/token?grant_type=account_credentials&account_id=oufknCUvSBKO5YWbmE4R-g`,
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${ZOOM_CLIENT_ID}:${ZOOM_CLIENT_SECRET}`).toString('base64')}`,
+    }
+  })
+}
+
+const getEngInfo = async (accessToken, engagementId) => {
+  const url = `${process.env.ZOOM_HOST}/v2/contact_center/engagements/${engagementId}`
+  console.log('!!! Eng url:', url)
+  console.log('!!! accessToken:', accessToken)
+  return await axios({
+    url: `${process.env.ZOOM_HOST}/v2/contact_center/engagements/${engagementId}`,
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+}
+
 module.exports = {
   getZoomAccessToken,
   refreshZoomAccessToken,
+  getBackendAccessToken,
   getZoomUser,
+  getEngInfo,
   getDeeplink,
 }

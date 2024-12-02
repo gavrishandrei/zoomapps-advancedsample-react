@@ -1,6 +1,7 @@
 /* eslint-disable prettier/prettier */
 const { createProxyMiddleware } = require('http-proxy-middleware')
 const zoomApi = require('../../util/zoom-api')
+const hubspotApi = require('../../util/hubspot-api')
 const zoomHelpers = require('../../util/zoom-helpers')
 const store = require('../../util/store')
 
@@ -99,6 +100,58 @@ module.exports = {
     }
   },
 
+  async getEngagementInfo(req, res, next) {
+    console.log(
+      'IN-CLIENT ON AUTHORIZED TOKEN HANDLER ==========================================================',
+      '\n'
+    )
+    console.log('REQUEST PARAMS:', req.query);
+    console.log('SESSION:', req.session);
+    console.log('req.body.href:', req.body.href);
+    //const zoomAuthorizationCode = req.body.code
+    const currentUser = req.session.user;
+    const engagementId = req.query.engagementId;
+    
+    // // not enough permission for contact center
+    // const appUser = await store.getUser(currentUser)
+    // console.log('!!!! appUser:', appUser);
+    // const { expired_at = 0, refreshToken = null } = appUser
+
+    // if (!refreshToken) {
+    //   console.log('Error: No refresh token saved for this user');
+    // }
+    // let accessToken = appUser.accessToken
+    // if (expired_at && Date.now() >= expired_at - 5000) {
+    //   try {
+    //     console.log('2. User access token expired')
+    //     console.log('2a. Refresh Zoom REST API access token')
+
+    //     const tokenResponse = await zoomApi.refreshZoomAccessToken(
+    //       appUser.refreshToken
+    //     )
+    //     accessToken = tokenResponse.data.access_token
+    //     console.log('2b. Save refreshed user token', accessToken)
+    //     await store.updateUser(currentUser, {
+    //       accessToken: tokenResponse.data.access_token,
+    //       refreshToken: tokenResponse.data.refresh_token,
+    //       expired_at: Date.now() + tokenResponse.data.expires_in * 1000,
+    //     })
+
+    //   } catch (error) {
+    //     console.log('Error refreshing user token.', error)
+    //   }
+    // }
+    try {
+      const accessTokenResponse = await zoomApi.getBackendAccessToken()
+      
+      const engagementResponse = await zoomApi.getEngInfo(accessTokenResponse.data.access_token, engagementId)
+      console.log('!!! engagementResponse:', engagementResponse)
+      return res.json(engagementResponse.data)
+    } catch (error) {
+      return next(error)
+    }
+  },
+
   // INSTALL HANDLER ==========================================================
   // Main entry point for the web-based app install and Zoom user authorize flow
   // Kicks off the OAuth 2.0 based exchange with zoom.us
@@ -139,6 +192,59 @@ module.exports = {
     // 3. Redirect to url - the user can authenticate and authorize the app scopes securely on zoom.us
     console.log('3. Redirecting to redirect url', '\n')
     res.redirect(redirectUrl)
+  },
+
+  installHubSpot(req, res) {
+    const sessionUser = req.session.user
+    const hubspotScopes = ['crm.objects.contacts.read'];
+    const redirectUrl = `${process.env.PUBLIC_URL}/api/zoomapp/hubspotOauthCallback?zoomUser=${sessionUser}`
+    const authUrl =
+    'https://app.hubspot.com/oauth/authorize' +
+    `?client_id=${encodeURIComponent(process.env.HUBSPOT_APP_CLIENT_ID)}` + // app's client ID
+    `&scope=${encodeURIComponent(hubspotScopes)}` + // scopes being requested by the app
+    `&redirect_uri=${encodeURIComponent(redirectUrl)}` // where to send the user after the consent page
+
+    console.log('=== Initiating OAuth 2.0 flow with HubSpot ===')
+    console.log('')
+    console.log("===> Step 1: Redirecting user to your app's OAuth URL")
+    res.redirect(authUrl)
+    console.log('===> Step 2: User is being prompted for consent by HubSpot')
+  },
+
+  async hubspotOauthCallback(req, res) {
+    console.log('===> Step 3: Handling the request sent by the server');
+
+    // Received a user authorization code, so now combine that with the other
+    // required values and exchange both for an access token and a refresh token
+    if (req.query.code) {
+      console.log('       > Received an authorization token');
+      const redirectUrl = `${process.env.PUBLIC_URL}/api/zoomapp/hupspotOauthCallback`
+      const authCodeProof = {
+        grant_type: 'authorization_code',
+        client_id: process.env.HUBSPOT_APP_CLIENT_ID,
+        client_secret: process.env.HUBSPOT_APP_CLIENT_ID,
+        redirect_uri: redirectUrl,
+        code: req.query.code
+      };
+
+      // Step 4
+      // Exchange the authorization code for an access token and refresh token
+      console.log('===> Step 4: Exchanging authorization code for an access token and refresh token');
+      const token = await hubspotApi.exchangeForTokens(authCodeProof);
+      console.log('ZOOM USER ID:', req.query.zoomUser);
+      console.log('HUBSPOT TOKEN OBJECT:', token);
+      // await store.updateUser(sessionUser, {
+      //   thirdPartyAccessToken: auth0AccessToken.access_token,
+      // })
+
+      // if (token.message) {
+      //   console.log(`${token.message}`);
+      // }
+
+      // Once the tokens have been retrieved, use them to make a query
+      // to the HubSpot API
+      //res.redirect(`/`);
+    }
   },
 
   // ZOOM OAUTH REDIRECT HANDLER ==============================================
@@ -282,9 +388,16 @@ module.exports = {
   },
 
   // FRONTEND PROXY ===========================================================
+  // proxy(req, res) {
+  //   return createProxyMiddleware({
+  //     target: process.env.ZOOM_APP_CLIENT_URL,
+  //     changeOrigin: true,
+  //     ws: false,
+  //   })
+  // }
   proxy: createProxyMiddleware({
     target: process.env.ZOOM_APP_CLIENT_URL,
     changeOrigin: true,
-    ws: false,
+    ws: false
   }),
 }

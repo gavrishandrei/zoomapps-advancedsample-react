@@ -1,12 +1,12 @@
 /* globals zoomSdk */
 import React, { useEffect, useState } from "react";
-import { Route, Navigate, useLocation } from "react-router-dom";
+// import { Route, Navigate, useLocation } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import Auth0User from "./Auth0User";
-import Header from "./Header";
-import IFrame from "./IFrame";
-import Image from "./Image";
-import UserInfo from "./UserInfo";
+// import Header from "./Header";
+// import IFrame from "./IFrame";
+// import Image from "./Image";
+// import UserInfo from "./UserInfo";
 
 export const Authorization = (props) => {
   const {
@@ -16,7 +16,7 @@ export const Authorization = (props) => {
     user,
     userContextStatus,
   } = props;
-  const location = useLocation();
+  // const location = useLocation();
   const [userAuthorized, setUserAuthorized] = useState(null);
   const [showInClientOAuthPrompt, setShowInClientOAuthPrompt] = useState(false);
   const [inGuestMode, setInGuestMode] = useState(false);
@@ -137,40 +137,12 @@ export const Authorization = (props) => {
 
   return (
     <>
-      <p>You are on this route: {location}</p>
-
       {!inGuestMode && <Button
         variant="primary"
         onClick={inGuestMode ? promptAuthorize : authorize}
       >
         {inGuestMode ? "promptAuthorize" : "authorize"}
       </Button>}
-
-      <div>
-        <Header
-          navLinks={{ userInfo: "User Info", iframe: "IFrame", image: "Image" }}
-        />
-        <Route path="" exact>
-          <Navigate to="/userinfo" />
-        </Route>
-        <Route path="/userinfo">
-
-          <UserInfo
-            user={user}
-            onClick={inGuestMode ? promptAuthorize : authorize}
-            showGuestModePrompt={inGuestMode}
-            userContextStatus={userContextStatus}
-            showInClientOAuthPrompt={showInClientOAuthPrompt}
-          />
-        </Route>
-        <Route path="/image">
-          <Image />
-        </Route>
-        <Route path="/iframe">
-          <IFrame />
-        </Route>
-      </div>
-      <Header navLinks={{ auth0Data: "Auth0 User Data" }} />
       <Auth0User user={user} />
     </>
   );

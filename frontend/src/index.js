@@ -12,7 +12,11 @@ const history = createHashHistory();
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/api/zoomapp/proxy" element={<App />} />
+      </Routes>
+    </BrowserRouter>
   </React.StrictMode>
 );
 // If you want to start measuring performance in your app, pass a function

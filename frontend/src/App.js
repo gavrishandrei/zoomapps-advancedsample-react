@@ -1,9 +1,11 @@
 /* globals zoomSdk */
-import { useLocation, useNavigate} from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import { apis } from "./apis";
 import { Authorization } from "./components/Authorization";
+import { AuthHubspotUser } from "./components/AuthHubspotUser";
 import ApiScrollview from "./components/ApiScrollview";
+// import { authorize } from "./zoomEndpoints";
 
 import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -17,10 +19,13 @@ function App() {
   const [user, setUser] = useState(null);
   const [runningContext, setRunningContext] = useState(null);
   const [engagementContext, setEngagementContext] = useState(null);
+  const [currentEngagementId, setEngagementId] = useState(null);
   const [data, setData] = useState(null);
   const [configResponse, setConfigResponse] = useState(null);
   const [counter, setCounter] = useState(0);
   const [userContextStatus, setUserContextStatus] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+
 
   useEffect(() => {
     async function configureSdk() {
@@ -60,7 +65,7 @@ function App() {
 
             "onEngagementContextChange",
             "onEngagementStatusChange",
-
+            "onEngagementMediaRedirect",
             "onPhoneCalleeAnswered",
             "onPhoneContext",
             "onPhoneCallerEnded",
@@ -104,6 +109,34 @@ function App() {
         zoomSdk.onEngagementStatusChange((data) => {
           console.log('!!!! New Engagement Status:', data);
         });
+
+        zoomSdk.onEngagementContextChange((data) => {
+          console.log('!!!! New Engagement Context:', data);
+        });
+
+        zoomSdk.onEngagementMediaRedirect((data) => {
+          console.log('!!!! New onEngagementMediaRedirect:', data);
+        });
+        
+        zoomSdk.onAuthorized((data) => {
+          console.log('!!!! New onAuthorized:', data);
+        });
+        if (configResponse.runningContext !== 'inMainClient') {
+          const engagementResponse = await zoomSdk.getEngagementContext();
+          console.log('!!!! engagementResponse:', engagementResponse.engagementContext);
+          setEngagementContext(engagementResponse.engagementContext);
+          setEngagementId(engagementResponse.engagementContext.engagementId);
+
+          const engVariablesResponse = await zoomSdk.getEngagementVariableValue({engagementId: engagementResponse.engagementContext.engagementId});
+          console.log('!!!! engagementVars:', engVariablesResponse);
+
+          //const userResponse = await (await fetch(`/zoom/api`));
+          //console.log('!!!! userResponse', userResponse);
+          const engagementFullResponse = await (await fetch(`/api/zoomapp/getEngagementInfo?engagementId=${engagementResponse.engagementContext.engagementId}`)).json();
+          console.log('!!!! engagementFullResponse', engagementFullResponse);
+        }
+        
+
       } catch (error) {
         console.log(error);
         setError("There was an error configuring the JS SDK");
@@ -115,6 +148,10 @@ function App() {
     configureSdk();
   }, [counter]);
 
+  useEffect(() => {
+    console.log('!!!!!!!!!!!!!! currentUserStatus:', searchParams.get('currentUserStatus'));
+  }, [searchParams]);
+
 
   if (error) {
     console.log(error);
@@ -124,23 +161,22 @@ function App() {
       </div>
     );
   }
-
-  return (
-    <div className="App">
-        <h1>Hello{user ? ` ${user.first_name} ${user.last_name}` : " Zoom Apps user"}!</h1>
-        <p>{`User Context Status: ${userContextStatus}`}</p>
-        <p>
-          {runningContext ?
-            `Running Context: ${runningContext}` :
-            "Configuring Zoom JavaScript SDK..."
-          }
-        </p>
-        <p>{configResponse}</p>
-        <p>{data}</p>
-
-        <ApiScrollview />
+  // if (configResponse.runningContext === 'inMainClient') {
+    return (
+      <div className="App">
+        <AuthHubspotUser />
       </div>
-  );
+    )
+  // } 
+  // else {
+  //   return (
+  //     <div className="App">
+        
+  //         <h1>{`EngagementId: ${currentEngagementId}`}</h1>
+  //       </div>
+  //   );
+  // }
+  
 }
 
 export default App;
