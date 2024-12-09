@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 // import { Route, Navigate, useLocation } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import Auth0User from "./Auth0User";
+import AuthHubspotUser from "./AuthHubspotUser";
 // import Header from "./Header";
 // import IFrame from "./IFrame";
 // import Image from "./Image";
@@ -137,13 +138,7 @@ export const Authorization = (props) => {
 
   return (
     <>
-      {!inGuestMode && <Button
-        variant="primary"
-        onClick={inGuestMode ? promptAuthorize : authorize}
-      >
-        {inGuestMode ? "promptAuthorize" : "authorize"}
-      </Button>}
-      <Auth0User user={user} />
+      <AuthHubspotUser user={user}/>
     </>
   );
 };

@@ -32,6 +32,14 @@ module.exports = {
     return JSON.parse(encrypt.beforeDeserialization(user))
   },
 
+  getHubSpotData: async function (zoomAccountId) {
+    const account = await getAsync(zoomAccountId)
+    if (!account) {
+      return Promise.reject('Account not found')
+    }
+    return JSON.parse(encrypt.beforeDeserialization(account))
+  },
+
   upsertUser: function (zoomUserId, accessToken, refreshToken, expired_at) {
     const isValidUser = Boolean(
       typeof zoomUserId === 'string' &&
@@ -60,6 +68,36 @@ module.exports = {
     return setAsync(
       zoomUserId,
       encrypt.afterSerialization(JSON.stringify(updatedUser))
+    )
+  },
+
+  upsertHubSpotAuth: function (zoomAccountId, accessToken, refreshToken) {
+    const isValidAccount = Boolean(
+      typeof zoomAccountId === 'string' &&
+        typeof accessToken === 'string' &&
+        typeof refreshToken === 'string'
+    )
+
+    if (!isValidAccount) {
+      return Promise.reject('Invalid account input')
+    }
+
+    return setAsync(
+      zoomAccountId,
+      encrypt.afterSerialization(
+        JSON.stringify({ accessToken, refreshToken})
+      )
+    )
+  },
+
+  updateHubSpotAuth: async function (zoomAccountId, data) {
+    const accountData = await getAsync(zoomAccountId)
+    const existingHubSpotAccount = JSON.parse(encrypt.beforeDeserialization(accountData))
+    const updatedHubSpotAccount = { ...existingHubSpotAccount, ...data }
+
+    return setAsync(
+      zoomAccountId,
+      encrypt.afterSerialization(JSON.stringify(updatedHubSpotAccount))
     )
   },
 

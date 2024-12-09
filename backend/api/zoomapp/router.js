@@ -12,5 +12,6 @@ router
   .post('/onauthorized', controller.inClientOnAuthorized)
   .get('/installHubspot', controller.installHubSpot)
   .get('/hubspotOauthCallback', controller.hubspotOauthCallback)
+  .get('/isCrmInstalled', controller.getCrmInstalled)
 
 module.exports = router

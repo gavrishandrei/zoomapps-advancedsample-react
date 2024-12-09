@@ -100,6 +100,21 @@ module.exports = {
     }
   },
 
+  async getCrmInstalled(req, res) {
+    const zoomAccountId = req.query.accountId
+    let isCrmSetup = false;
+    try {
+      const responseData = await store.getHubSpotData(zoomAccountId)
+      console.log('!!!! RESP DATA:', responseData)
+      if (responseData) {
+        isCrmSetup = true
+      }
+    } catch(error) {
+      isCrmSetup = false
+    }
+    return res.json({ result: isCrmSetup })
+  },
+
   async getEngagementInfo(req, res, next) {
     console.log(
       'IN-CLIENT ON AUTHORIZED TOKEN HANDLER ==========================================================',
@@ -195,13 +210,15 @@ module.exports = {
   },
 
   installHubSpot(req, res) {
-    const sessionUser = req.session.user
-    const hubspotScopes = ['crm.objects.contacts.read'];
-    const redirectUrl = `${process.env.PUBLIC_URL}/api/zoomapp/hubspotOauthCallback?zoomUser=${sessionUser}`
+    const zoomAccountId = req.query.accountId
+    console.log('zoomAccountId:', req.query);
+    const hubspotScopes = 'crm.objects.contacts.read, oauth';
+    const SCOPES = (hubspotScopes.split(/ |, ?|%20/)).join(' ')
+    const redirectUrl = `${process.env.PUBLIC_URL}/api/zoomapp/hubspotOauthCallback?accountId=${zoomAccountId}`
     const authUrl =
     'https://app.hubspot.com/oauth/authorize' +
     `?client_id=${encodeURIComponent(process.env.HUBSPOT_APP_CLIENT_ID)}` + // app's client ID
-    `&scope=${encodeURIComponent(hubspotScopes)}` + // scopes being requested by the app
+    `&scope=${encodeURIComponent(SCOPES)}` + // scopes being requested by the app
     `&redirect_uri=${encodeURIComponent(redirectUrl)}` // where to send the user after the consent page
 
     console.log('=== Initiating OAuth 2.0 flow with HubSpot ===')
@@ -212,30 +229,29 @@ module.exports = {
   },
 
   async hubspotOauthCallback(req, res) {
-    console.log('===> Step 3: Handling the request sent by the server');
+    console.log('===> Step 3: Handling the request sent by the server', req.query);
 
     // Received a user authorization code, so now combine that with the other
     // required values and exchange both for an access token and a refresh token
     if (req.query.code) {
       console.log('       > Received an authorization token');
-      const redirectUrl = `${process.env.PUBLIC_URL}/api/zoomapp/hupspotOauthCallback`
+      const redirectUrl = `${process.env.PUBLIC_URL}/api/zoomapp/hubspotOauthCallback?accountId=${req.query.accountId}`
       const authCodeProof = {
         grant_type: 'authorization_code',
         client_id: process.env.HUBSPOT_APP_CLIENT_ID,
-        client_secret: process.env.HUBSPOT_APP_CLIENT_ID,
+        client_secret: process.env.HUBSPOT_APP_CLIENT_SECRET,
         redirect_uri: redirectUrl,
         code: req.query.code
       };
 
       // Step 4
       // Exchange the authorization code for an access token and refresh token
-      console.log('===> Step 4: Exchanging authorization code for an access token and refresh token');
-      const token = await hubspotApi.exchangeForTokens(authCodeProof);
-      console.log('ZOOM USER ID:', req.query.zoomUser);
-      console.log('HUBSPOT TOKEN OBJECT:', token);
-      // await store.updateUser(sessionUser, {
-      //   thirdPartyAccessToken: auth0AccessToken.access_token,
-      // })
+      // console.log('===> Step 4: Exchanging authorization code for an access token and refresh token');
+      const token = await hubspotApi.exchangeHubSpotTokens(authCodeProof);
+      console.log('HUBSPOT DATA:', token.data);
+      console.log('HUBSPOT TOKEN OBJECT:', token.data.access_token);
+      console.log('HUBSPOT REFRESH TOKEN OBJECT:', token.data.refresh_token);
+      await store.upsertHubSpotAuth(req.query.accountId, token.data.access_token, token.data.refresh_token);
 
       // if (token.message) {
       //   console.log(`${token.message}`);
@@ -243,7 +259,7 @@ module.exports = {
 
       // Once the tokens have been retrieved, use them to make a query
       // to the HubSpot API
-      //res.redirect(`/`);
+      //res.redirect(`/api/zoomapp/proxy`);
     }
   },
 
