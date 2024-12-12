@@ -115,6 +115,32 @@ module.exports = {
     return res.json({ result: isCrmSetup })
   },
 
+  async getCrmContactsByPhone(req, res) {
+    const zoomAccountId = req.body.zoomAccountId
+    const phoneNumber = req.body.phoneNumber
+    try {
+      const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
+      const getContactsResponse = await hubspotApi.getContactsByPhone(accessToken, phoneNumber)
+      return res.json(getContactsResponse.data)
+    } catch(error) {
+      console.log('!!!!! CRM Error:', error)
+    }
+  },
+
+  async createCrmTicket(req, res) {
+    const zoomAccountId = req.body.zoomAccountId
+    const ticketProperties = req.body.properties
+    try {
+      const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
+      const getTicketResponse = await hubspotApi.createTicket(accessToken, ticketProperties)
+      console.log('!!! getTicketResponse:', getTicketResponse.data)
+      return res.json(getTicketResponse.data)
+    } catch(error) {
+      console.log('!!!!! CRM Error:', error)
+    }
+    
+  },
+
   async getEngagementInfo(req, res, next) {
     console.log(
       'IN-CLIENT ON AUTHORIZED TOKEN HANDLER ==========================================================',
@@ -163,8 +189,33 @@ module.exports = {
       console.log('!!! engagementResponse:', engagementResponse)
       return res.json(engagementResponse.data)
     } catch (error) {
+      console.log('ZOOM API ERROR:', error)
       return next(error)
     }
+  },
+
+  async storeEngagementDetails(req, res) {
+    const engagementId = req.body.engagementId
+    const incomingNumber = req.body.incomingNumber
+    console.log('!!! engagementId:', engagementId);
+    console.log('!!! incomingNumber:', incomingNumber);
+    try {
+      await store.upserEngagementDetails(engagementId, incomingNumber);
+    } catch (error) {
+      res.status(400).send({message: error})
+    }
+    res.status(200).send({message: "Updated post successfuly"})
+  },
+
+  async getEngagementDetails(req, res) {
+    const engagementId = req.query.engagementId
+    try {
+      const responseData = await store.getEngagementDetails(engagementId)
+      return res.json(responseData)
+    } catch(error) {
+      console.log('!!! Error:', error)
+    }
+    
   },
 
   // INSTALL HANDLER ==========================================================
@@ -212,7 +263,7 @@ module.exports = {
   installHubSpot(req, res) {
     const zoomAccountId = req.query.accountId
     console.log('zoomAccountId:', req.query);
-    const hubspotScopes = 'crm.objects.contacts.read, oauth';
+    const hubspotScopes = 'crm.objects.contacts.read, oauth, tickets';
     const SCOPES = (hubspotScopes.split(/ |, ?|%20/)).join(' ')
     const redirectUrl = `${process.env.PUBLIC_URL}/api/zoomapp/hubspotOauthCallback?accountId=${zoomAccountId}`
     const authUrl =

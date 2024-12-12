@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { apis } from "./apis";
 import { CrmInfo } from "./components/CrmInfo";
 import { Authorization } from "./components/Authorization";
+import AuthHubspotUser from "./components/AuthHubspotUser";
 import ApiScrollview from "./components/ApiScrollview";
 // import { authorize } from "./zoomEndpoints";
 
@@ -126,9 +127,19 @@ function App() {
         });
         if (configResponse.runningContext === 'inContactCenter') {
           const engagementResponse = await zoomSdk.getEngagementContext();
-          const engagementFullResponse = await (await fetch(`/api/zoomapp/getEngagementInfo?engagementId=${engagementResponse.engagementContext.engagementId}`)).json();
+          console.log('!!!! engagementResponse:', engagementResponse);
+          const options = {
+            engagementId: engagementResponse.engagementContext.engagementId,
+            variableId: '58af5b97-ccc7-420f-9975-12eccb9929fc'
+          }
+          const engagementVariableResponse = await zoomSdk.getEngagementVariableValue(options);
+          console.log('!!!! engagementVariableResponse:', engagementVariableResponse);
+
+          //const engagementFullResponse = await (await fetch(`/api/zoomapp/getEngagementInfo?engagementId=${engagementResponse.engagementContext.engagementId}`)).json();
+          //console.log('!!!! engagementFullResponse', engagementFullResponse);
+          const engagementFullResponse = await (await fetch(`/api/zoomapp/getEngagementDetails?engagementId=${engagementResponse.engagementContext.engagementId}`)).json();
           console.log('!!!! engagementFullResponse', engagementFullResponse);
-          setConsumer(engagementFullResponse.consumers[0]);
+          setConsumer(engagementFullResponse);
 
         }
         const userResponse = await fetch("/zoom/api/v2/users/me");
@@ -164,13 +175,13 @@ function App() {
   if (runningContext === 'inMainClient' && isCrmConnected) {
     return (
       <div className="App">
-          Already Connected
+          <AuthHubspotUser user={user}/>
       </div>
     )
   } else if (runningContext === 'inMainClient' && !isCrmConnected) {
     return (
       <div className="App">
-          Need to connect CRM
+          <AuthHubspotUser user={user}/>
       </div>
     );
   } else if (runningContext === 'inContactCenter' && isCrmConnected) {

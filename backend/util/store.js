@@ -59,6 +59,31 @@ module.exports = {
       )
     )
   },
+  upserEngagementDetails: function (engagementId, phoneNumber) {
+    const isValiEng = Boolean(
+      typeof engagementId === 'string' &&
+        typeof phoneNumber === 'string'
+    )
+
+    if (!isValiEng) {
+      return Promise.reject('Invalid engagement input')
+    }
+
+    return setAsync(
+      engagementId,
+      encrypt.afterSerialization(
+        JSON.stringify({ phoneNumber })
+      )
+    )
+  },
+
+  getEngagementDetails: async function (engagementId) {
+    const engagement = await getAsync(engagementId)
+    if (!engagement) {
+      return Promise.reject('Engagement not found')
+    }
+    return JSON.parse(encrypt.beforeDeserialization(engagement))
+  },
 
   updateUser: async function (zoomUserId, data) {
     const userData = await getAsync(zoomUserId)

@@ -96,7 +96,7 @@ const getEngInfo = async (accessToken, engagementId) => {
   console.log('!!! Eng url:', url)
   console.log('!!! accessToken:', accessToken)
   return await axios({
-    url: `${process.env.ZOOM_HOST}/v2/contact_center/engagements/${engagementId}`,
+    url: url,
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',

@@ -57,7 +57,8 @@ if (
 
 app.use('/zoom', zoomRouter)
 
-app.get('/hello', (req, res) => {
+app.post('/hello', (req, res) => {
+  console.log('!!!! REQUEST:', req.body)
   res.status(200).send({message: "Updated post successfuly"})
 })
 
@@ -65,7 +66,7 @@ app.post('/webhook', (req, res) => {
 
   let response
 
-  console.log(req.body)
+  console.log('!!!!! WEBHOOK:', req.body)
 
   // construct the message string
   const message = `v0:${req.headers['x-zm-request-timestamp']}:${JSON.stringify(req.body)}`
@@ -93,13 +94,13 @@ app.post('/webhook', (req, res) => {
       //res.redirect('https://9881-138-199-59-143.ngrok-free.app/api/zoomapp/proxy?currentUserStatus=notready');
       // res.redirect(`/api/zoomapp/proxy?currentUserStatus=${currentUserStatus}`)
 
-      axios.get('https://9881-138-199-59-143.ngrok-free.app/api/zoomapp/proxy?currentUserStatus=notready')
-        .then(response => {
-          console.log(response.data);
-        })
-        .catch(error => {
-          console.log(error);
-        })
+      // axios.get('https://9881-138-199-59-143.ngrok-free.app/api/zoomapp/proxy?currentUserStatus=notready')
+      //   .then(response => {
+      //     console.log(response.data);
+      //   })
+      //   .catch(error => {
+      //     console.log(error);
+      //   })
     }
     // Zoom validating you control the webhook endpoint https://marketplace.zoom.us/docs/api-reference/webhook-reference#validate-webhook-endpoint
     if(req.body.event === 'endpoint.url_validation') { 

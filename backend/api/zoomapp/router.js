@@ -13,5 +13,8 @@ router
   .get('/installHubspot', controller.installHubSpot)
   .get('/hubspotOauthCallback', controller.hubspotOauthCallback)
   .get('/isCrmInstalled', controller.getCrmInstalled)
+  .post('/getCrmContactByPhone', controller.getCrmContactsByPhone)
+  .get('/getEngagementDetails', controller.getEngagementDetails)
+  .post('/incomingEngagement', controller.storeEngagementDetails)
 
 module.exports = router
