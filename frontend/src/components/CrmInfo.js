@@ -6,22 +6,37 @@ import { Form, Container, Button, Dropdown, Row, Col, Accordion, DropdownButton 
 import 'bootstrap/dist/css/bootstrap.min.css';
 // import { Button } from "@/components/ui/button"
 // import { HStack } from "@chakra-ui/react"
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import "./CrmInfo.css";
 
-export const CrmInfo = (props) => {
+export const CrmInfo = forwardRef((props, ref) => {
+  const statusItems = [
+    {label: 'New', value: '1'},
+    {label: 'Waiting on contact', value: '2'},
+    {label: 'Waiting on us', value: '3'},
+    {label: 'Closed', value: '4'}
+  ];
+
+  const priorityItems = [
+    {label: 'Low', value: 'LOW'},
+    {label: 'Medium', value: 'MEDIUM'},
+    {label: 'High', value: 'HIGH'}
+  ];
+
   const [contact, setContact] = useState(null);
   const [isComponentRendeded, setIsComponentRendered] = useState(false);
-  const [selectedPriorityItem, setSelectedPriorityItem] = useState('Low');
-  const [selectedStatusItem, setSelectedStatusItem] = useState('New');
+  const [selectedPriorityItem, setSelectedPriorityItem] = useState(priorityItems[0]);
+  const [selectedStatusItem, setSelectedStatusItem] = useState(statusItems[0]);
 
   const [description, setDescription] = useState('');
   const [subject, setSubject] = useState('');
+  const [ticketId, setTicketId] = useState('');
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredItems, setFilteredItems] = useState([]);
 
   const items = ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape"];
+
 
   const saveTicket = async (event) => {
     const ticketBody = JSON.stringify(
@@ -31,8 +46,8 @@ export const CrmInfo = (props) => {
           contactId: contact.hs_object_id,
           subject: subject, 
           description: description,
-          priority: selectedPriorityItem,
-          status: selectedStatusItem
+          priority: selectedPriorityItem.value,
+          status: selectedStatusItem.value
         }
       }
     );
@@ -48,7 +63,7 @@ export const CrmInfo = (props) => {
         body: ticketBody
       })
     ).json();
-    console.log(createCrmTicketResp);
+    setTicketId(createCrmTicketResp.id);
   }
 
   const handleSearchChange = (e) => {
@@ -78,17 +93,17 @@ export const CrmInfo = (props) => {
   };
 
   const handleSelectPriority = (eventKey) => {
-    setSelectedPriorityItem(eventKey);
-    console.log(`Selected item: ${eventKey}`);
+    const selectedItem = priorityItems.find(item => item.value === eventKey);
+    setSelectedPriorityItem(selectedItem);
     // Add your custom logic here
   };
 
   const handleSelectStatus = (eventKey) => {
-    setSelectedStatusItem(eventKey);
-    console.log(`Selected item: ${eventKey}`);
+    console.log(statusItems);
+    const selectedItem = statusItems.find(item => item.value === eventKey);
+    setSelectedStatusItem(selectedItem);
     // Add your custom logic here
   };
-
 
   const getCrmContactByPhone = async (zoomAccountId, phoneNumber) => {
     const getContactByPhoneBody = JSON.stringify({zoomAccountId: zoomAccountId, phoneNumber: phoneNumber});
@@ -109,7 +124,31 @@ export const CrmInfo = (props) => {
     setIsComponentRendered(true);
   }
 
-  console.log('!!!! props', props);
+  useImperativeHandle(ref, () => ({
+    async createNotes(zoomAccountId, engagementId) {
+      const createNotesBody = JSON.stringify(
+        {
+          zoomAccountId: zoomAccountId,
+          engagementId: engagementId,
+          crmTicketId: ticketId
+        }
+      );
+      const createNotesResp = await (await fetch(
+        '/api/zoomapp/saveEngagementNotes',
+        {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: createNotesBody
+        })
+      ).json();
+      console.log('! createNotesResp:', createNotesResp);
+    }
+  }))
+  
+
   const {
     phoneNumber
   } = props.consumer;
@@ -141,7 +180,7 @@ export const CrmInfo = (props) => {
             <Accordion.Item eventKey="0">
               <Accordion.Header>Ticket Associations</Accordion.Header>
               <Accordion.Body>
-              <div className="search-dropdown" style={{ width: "300px", margin: "20px auto" }}>
+              <div className="search-dropdown" style={{ width: "400px", margin: "20px auto" }}>
                 <Form.Control
                   type="text"
                   placeholder="Search..."
@@ -167,14 +206,18 @@ export const CrmInfo = (props) => {
                     <Col>
                       <div className="m-3">
                         <Dropdown onSelect={handleSelectPriority}>
-                          <Dropdown.Toggle variant="primary" id="dropdown-basic">
-                            Priority: {selectedPriorityItem}
+                          <Dropdown.Toggle variant="light" id="dropdown-basic">
+                            Priority: {selectedPriorityItem.label}
                           </Dropdown.Toggle>
 
                           <Dropdown.Menu>
-                            <Dropdown.Item eventKey="Low">Low</Dropdown.Item>
-                            <Dropdown.Item eventKey="Medium">Medium</Dropdown.Item>
-                            <Dropdown.Item eventKey="High">High</Dropdown.Item>
+                            {
+                              priorityItems.map((item, index) => (
+                                <Dropdown.Item key={index} eventKey={item.value}>
+                                  {item.label}
+                                </Dropdown.Item>
+                              ))
+                            }
                           </Dropdown.Menu>
                         </Dropdown>
                       </div>
@@ -182,14 +225,18 @@ export const CrmInfo = (props) => {
                     <Col>
                       <div className="m-3">
                         <Dropdown onSelect={handleSelectStatus}>
-                          <Dropdown.Toggle variant="primary" id="dropdown-basic-status">
-                            Status: {selectedStatusItem}
+                          <Dropdown.Toggle variant="light" id="dropdown-basic-status">
+                            Status: {selectedStatusItem.label}
                           </Dropdown.Toggle>
 
                           <Dropdown.Menu>
-                            <Dropdown.Item eventKey="New">New</Dropdown.Item>
-                            <Dropdown.Item eventKey="Waiting on contact">Waiting on contact</Dropdown.Item>
-                            <Dropdown.Item eventKey="Closed">Closed</Dropdown.Item>
+                            {
+                              statusItems.map((item, index) => (
+                                <Dropdown.Item key={index} eventKey={item.value}>
+                                  {item.label}
+                                </Dropdown.Item>
+                              ))
+                            }
                           </Dropdown.Menu>
                         </Dropdown>
                       </div>
@@ -215,7 +262,7 @@ export const CrmInfo = (props) => {
                       <Form.Label>Description</Form.Label>
                       <Form.Control
                         as="textarea"
-                        rows={5}
+                        rows={2}
                         value={description}
                         onChange={handleTextChange}
                         placeholder="Ticket description"
@@ -240,4 +287,4 @@ export const CrmInfo = (props) => {
     )
   } 
   
-}
+})

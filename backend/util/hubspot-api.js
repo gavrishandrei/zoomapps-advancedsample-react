@@ -58,12 +58,13 @@ const getContactsByPhone = async (accessToken, phoneNumber) => {
 }
 
 const createTicket = async (accessToken, ticketDetailes) => {
-  const properties = {
-    subject: ticketDetailes.subject,
-    content: ticketDetailes.description,
-    hs_ticket_priority: ticketDetailes.selectedPriorityItem,
-    hs_pipeline_stage: ticketDetailes.selectedStatusItem
+  const propertiesObj = {
+      subject: ticketDetailes.subject,
+      content: ticketDetailes.description,
+      hs_ticket_priority: ticketDetailes.priority,
+      hs_pipeline_stage: ticketDetailes.status
   }
+
   return await await axios({
     url: 'https://api.hubapi.com/crm/v3/objects/tickets',
     method: 'POST',
@@ -72,34 +73,40 @@ const createTicket = async (accessToken, ticketDetailes) => {
       'Accept': 'application/json',
       Authorization: `Bearer ${accessToken}`
     },
-    data: JSON.stringify(properties),
+    data: {properties: propertiesObj},
   })
 }
 
-// const createAssociationTicketContact = async (accessToken, associationDetailes) => {
-//   //
-//   const properties = {
-//     subject: ticketDetailes.subject,
-//     content: ticketDetailes.description,
-//     hs_ticket_priority: ticketDetailes.selectedPriorityItem,
-//     hs_pipeline_stage: ticketDetailes.selectedStatusItem
-//   }
-//   return await await axios({
-//     url: 'https://api.hubapi.com/crm/v3/objects/tickets',
-//     method: 'POST',
-//     headers: {
-//       'Content-Type': 'application/json',
-//       'Accept': 'application/json',
-//       Authorization: `Bearer ${accessToken}`,
-//       data: 
-//     },
-//     data: JSON.stringify(properties),
-//   })
-// }
+const createNotes = async (accessToken, notesBody) => {
+  return await await axios({
+    url: 'https://api.hubapi.com/crm/v3/objects/notes/batch/create',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      Authorization: `Bearer ${accessToken}`
+    },
+    data: notesBody,
+  })
+}
+
+const createDefaultAssociation = async (accessToken, associationDetailes) => {
+  return await await axios({
+    url: `https://api.hubapi.com/crm/v4/objects/${associationDetailes.fromObjectType}/${associationDetailes.fromObjectId}/associations/default/${associationDetailes.toObjectType}/${associationDetailes.toObjectId}`,
+    method: 'PUT',
+    headers: {
+      'Accept': 'application/json',
+      Authorization: `Bearer ${accessToken}`
+    },
+    data: {}
+  })
+}
 
 module.exports = {
   exchangeHubSpotTokens,
   getAccessTokenByRefresh,
   getContactsByPhone,
-  createTicket
+  createTicket,
+  createDefaultAssociation,
+  createNotes
 }

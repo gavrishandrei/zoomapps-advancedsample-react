@@ -120,6 +120,7 @@ module.exports = {
     const phoneNumber = req.body.phoneNumber
     try {
       const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
+      console.log('!!!! accessToken:', accessToken)
       const getContactsResponse = await hubspotApi.getContactsByPhone(accessToken, phoneNumber)
       return res.json(getContactsResponse.data)
     } catch(error) {
@@ -133,8 +134,15 @@ module.exports = {
     try {
       const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
       const getTicketResponse = await hubspotApi.createTicket(accessToken, ticketProperties)
-      console.log('!!! getTicketResponse:', getTicketResponse.data)
-      return res.json(getTicketResponse.data)
+
+      const createDefaultAssociation = {
+        fromObjectType: 'ticket',
+        fromObjectId: getTicketResponse.data.id,
+        toObjectType: 'contact',
+        toObjectId: ticketProperties.contactId
+      }
+      await hubspotApi.createDefaultAssociation(accessToken, createDefaultAssociation)
+      res.json(getTicketResponse.data)
     } catch(error) {
       console.log('!!!!! CRM Error:', error)
     }
@@ -191,6 +199,85 @@ module.exports = {
     } catch (error) {
       console.log('ZOOM API ERROR:', error)
       return next(error)
+    }
+  },
+
+  async saveEngagementNotes(req, res) {
+    const defaultAssociationTypeId = 228
+    const defaultAssociationCategory = 'HUBSPOT_DEFINED'
+  //   "inputs": [
+  //   {
+  //     "associations": [
+  //       {
+  //         "types": [
+  //           {
+  //             "associationCategory": "HUBSPOT_DEFINED",
+  //             "associationTypeId": 228
+  //           }
+  //         ],
+  //         "to": {
+  //           "id": "17476182360"
+  //         }
+  //       }
+  //     ],
+  //     "properties": {
+  //       "hs_note_body": "sdvsdvsdvsdvsdv"
+  //     }
+  //   },
+  //   {
+  //     "associations": [
+  //       {
+  //         "types": [
+  //           {
+  //             "associationCategory": "HUBSPOT_DEFINED",
+  //             "associationTypeId": 228
+  //           }
+  //         ],
+  //         "to": {
+  //           "id": "17476182360"
+  //         }
+  //       }
+  //     ],
+  //     "properties": {
+  //       "hs_note_body": "seafsefsev11111"
+  //     }
+  //   }
+  // ]
+    const engagementId = req.body.engagementId
+    const zoomAccountId = req.body.zoomAccountId
+    const crmTicketIdId = req.body.crmTicketId
+    try {
+      const accessTokenResponse = await zoomApi.getBackendAccessToken()
+      const notesResponse = await zoomApi.getEngInfo(accessTokenResponse.data.access_token, engagementId)
+      console.log('!!! notesResponse:', notesResponse.data.notes)
+      const noteProperties = notesResponse.data.notes.map(noteItem => {
+        return {
+          associations: [
+            {
+              types: [
+                {
+                  associationCategory: defaultAssociationCategory,
+                  associationTypeId: defaultAssociationTypeId
+                }
+              ],
+              to: {
+                id: crmTicketIdId
+              }
+            }
+          ],
+          properties: {
+            hs_note_body: noteItem.note 
+          }
+        }
+      })
+      const crmNoteBody = {inputs: noteProperties}
+      console.log('!!!! crmNoteBody:', crmNoteBody)
+      const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
+      const getTicketResponse = await hubspotApi.createNotes(accessToken, crmNoteBody)
+      res.json(getTicketResponse.data)
+      return res.json(notesResponse.data)
+    } catch (error) {
+      console.log('ZOOM API ERROR:', error)
     }
   },
 

@@ -78,30 +78,11 @@ app.post('/webhook', (req, res) => {
 
   // you validating the request came from Zoom https://marketplace.zoom.us/docs/api-reference/webhook-reference#notification-structure
   if (req.headers['x-zm-signature'] === signature) {
-    if (req.body.event === 'contact_center.engagement_user_answered') {
-      const consumerPhoneNumber = req.body.payload.object.consumer_number
+    if (req.body.event === 'contact_center.engagement_note_added') {
+      const consumerPhoneNumber = req.body.payload.object.engagement_id
       console.log('!!! Consumer number:', consumerPhoneNumber)
     }
 
-    if (req.body.event === 'contact_center.user_status_changed') {
-      const currentUserStatus = req.body.payload.object.current_status_name
-      //const resUrl = `${process.env.ZOOM_APP_CLIENT_URL}?currentUserStatus=${currentUserStatus}`;
-      // const proxy = createProxyMiddleware({
-      //   target: resUrl,
-      //   changeOrigin: true,
-      //   ws: false
-      // }),
-      //res.redirect('https://9881-138-199-59-143.ngrok-free.app/api/zoomapp/proxy?currentUserStatus=notready');
-      // res.redirect(`/api/zoomapp/proxy?currentUserStatus=${currentUserStatus}`)
-
-      // axios.get('https://9881-138-199-59-143.ngrok-free.app/api/zoomapp/proxy?currentUserStatus=notready')
-      //   .then(response => {
-      //     console.log(response.data);
-      //   })
-      //   .catch(error => {
-      //     console.log(error);
-      //   })
-    }
     // Zoom validating you control the webhook endpoint https://marketplace.zoom.us/docs/api-reference/webhook-reference#validate-webhook-endpoint
     if(req.body.event === 'endpoint.url_validation') { 
       const hashForValidate = crypto.createHmac('sha256', process.env.ZOOM_WEBHOOK_SECRET_TOKEN).update(req.body.payload.plainToken).digest('hex')
@@ -115,14 +96,7 @@ app.post('/webhook', (req, res) => {
 
       res.status(response.status)
       res.json(response.message)
-    } else {
-      // response = { message: 'Authorized request to Zoom Webhook sample.', status: 200 }
-      // res.status(response.status)
-      // res.json(response)
-
-      // business logic here, example make API request to Zoom or 3rd party
-
-    }
+    } 
   } else {
 
     response = { message: 'Unauthorized request to Zoom Webhook sample.', status: 401 }

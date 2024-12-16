@@ -105,6 +105,18 @@ const getEngInfo = async (accessToken, engagementId) => {
   })
 }
 
+const getEngagementNotes = async (accessToken, engagementId) => {
+  const url = `${process.env.ZOOM_HOST}/v2/contact_center/engagements/${engagementId}/notes`
+  return await axios({
+    url: url,
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`
+    }
+  })
+}
+
 module.exports = {
   getZoomAccessToken,
   refreshZoomAccessToken,
@@ -112,4 +124,5 @@ module.exports = {
   getZoomUser,
   getEngInfo,
   getDeeplink,
+  getEngagementNotes
 }

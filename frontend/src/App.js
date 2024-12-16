@@ -1,7 +1,8 @@
 /* globals zoomSdk */
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 // import Button from '@salesforce/design-system-react/components/button';
-import { useCallback, useEffect, useState } from "react";
+import { Button } from 'react-bootstrap';
+import { useCallback, useEffect, useState, useRef, forwardRef } from "react";
 import { apis } from "./apis";
 import { CrmInfo } from "./components/CrmInfo";
 import { Authorization } from "./components/Authorization";
@@ -15,6 +16,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 let once = 0; // to prevent increasing number of event listeners being added
 
 function App() {
+  const crmInfoCompRef = useRef();
   // const history = useNavigate();
   // const location = useLocation();
   const [isRendered, setIsRendered] = useState(false);
@@ -32,7 +34,6 @@ function App() {
   // const [counter, setCounter] = useState(0);
   // const [userContextStatus, setUserContextStatus] = useState("");
   // const [searchParams, setSearchParams] = useSearchParams();
-
 
     async function configureSdk() {
       setIsRendered(true);
@@ -112,10 +113,18 @@ function App() {
 
         zoomSdk.onEngagementStatusChange((data) => {
           console.log('!!!! New Engagement Status:', data);
+          if (data.engagementStatus.state === 'end') {
+            crmInfoCompRef.current.createNotes(user.account_id, data.engagementStatus.engagementId)
+          }
+
         });
 
-        zoomSdk.onEngagementContextChange((data) => {
+        zoomSdk.onEngagementContextChange(async (data) => {
           console.log('!!!! New Engagement Context:', data);
+          const engagementId = data.engagementContext.engagementId;
+          const engagementFullResponse = await (await fetch(`/api/zoomapp/getEngagementDetails?engagementId=${engagementId}`)).json();
+          setConsumer(engagementFullResponse);
+
         });
 
         zoomSdk.onEngagementMediaRedirect((data) => {
@@ -128,12 +137,11 @@ function App() {
         if (configResponse.runningContext === 'inContactCenter') {
           const engagementResponse = await zoomSdk.getEngagementContext();
           console.log('!!!! engagementResponse:', engagementResponse);
-          const options = {
-            engagementId: engagementResponse.engagementContext.engagementId,
-            variableId: '58af5b97-ccc7-420f-9975-12eccb9929fc'
-          }
-          const engagementVariableResponse = await zoomSdk.getEngagementVariableValue(options);
-          console.log('!!!! engagementVariableResponse:', engagementVariableResponse);
+          // const options = {
+          //   engagementId: engagementResponse.engagementContext.engagementId
+          // }
+          // const engagementVariableResponse = await zoomSdk.getEngagementVariableValue(options);
+          // console.log('!!!! engagementVariableResponse:', engagementVariableResponse);
 
           //const engagementFullResponse = await (await fetch(`/api/zoomapp/getEngagementInfo?engagementId=${engagementResponse.engagementContext.engagementId}`)).json();
           //console.log('!!!! engagementFullResponse', engagementFullResponse);
@@ -188,10 +196,12 @@ function App() {
     return (
         <div className="App">
             <CrmInfo 
+              ref={crmInfoCompRef}
               consumer={consumer}
               zoomAccountId={user.account_id}
             />
         </div>
+        
     );
   }
 }

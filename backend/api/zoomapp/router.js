@@ -16,5 +16,7 @@ router
   .post('/getCrmContactByPhone', controller.getCrmContactsByPhone)
   .get('/getEngagementDetails', controller.getEngagementDetails)
   .post('/incomingEngagement', controller.storeEngagementDetails)
+  .post('/createCrmTicket', controller.createCrmTicket)
+  .post('/saveEngagementNotes', controller.saveEngagementNotes)
 
 module.exports = router
