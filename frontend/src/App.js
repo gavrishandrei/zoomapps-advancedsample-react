@@ -20,6 +20,7 @@ function App() {
   // const history = useNavigate();
   // const location = useLocation();
   const [isRendered, setIsRendered] = useState(false);
+  const [isCloseCrmCmp, setIsCloseCrmCmp] = useState(false);
   //let isRendered = false;
   const [error, setError] = useState(null);
   // const [user, setUser] = useState(null);
@@ -114,7 +115,8 @@ function App() {
         zoomSdk.onEngagementStatusChange((data) => {
           console.log('!!!! New Engagement Status:', data);
           if (data.engagementStatus.state === 'end') {
-            crmInfoCompRef.current.createNotes(user.account_id, data.engagementStatus.engagementId)
+            crmInfoCompRef.current.createNotes(user.account_id, data.engagementStatus.engagementId);
+            setIsCloseCrmCmp(true);
           }
 
         });
@@ -124,6 +126,7 @@ function App() {
           const engagementId = data.engagementContext.engagementId;
           const engagementFullResponse = await (await fetch(`/api/zoomapp/getEngagementDetails?engagementId=${engagementId}`)).json();
           setConsumer(engagementFullResponse);
+          setIsCloseCrmCmp(false);
 
         });
 
@@ -134,17 +137,10 @@ function App() {
         zoomSdk.onAuthorized((data) => {
           console.log('!!!! New onAuthorized:', data);
         });
+        
         if (configResponse.runningContext === 'inContactCenter') {
           const engagementResponse = await zoomSdk.getEngagementContext();
           console.log('!!!! engagementResponse:', engagementResponse);
-          // const options = {
-          //   engagementId: engagementResponse.engagementContext.engagementId
-          // }
-          // const engagementVariableResponse = await zoomSdk.getEngagementVariableValue(options);
-          // console.log('!!!! engagementVariableResponse:', engagementVariableResponse);
-
-          //const engagementFullResponse = await (await fetch(`/api/zoomapp/getEngagementInfo?engagementId=${engagementResponse.engagementContext.engagementId}`)).json();
-          //console.log('!!!! engagementFullResponse', engagementFullResponse);
           const engagementFullResponse = await (await fetch(`/api/zoomapp/getEngagementDetails?engagementId=${engagementResponse.engagementContext.engagementId}`)).json();
           console.log('!!!! engagementFullResponse', engagementFullResponse);
           setConsumer(engagementFullResponse);
@@ -195,11 +191,13 @@ function App() {
   } else if (runningContext === 'inContactCenter' && isCrmConnected) {
     return (
         <div className="App">
+          {!isCloseCrmCmp &&
             <CrmInfo 
               ref={crmInfoCompRef}
               consumer={consumer}
               zoomAccountId={user.account_id}
             />
+          }
         </div>
         
     );

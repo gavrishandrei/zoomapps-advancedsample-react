@@ -1,3 +1,17 @@
 .tab-custom {
     padding-top:2rem
 }
+
+.ticket-item-header {
+    float: right;
+    position: absolute;
+    right: 1rem;
+    bottom: 0.5rem;
+    color: black;
+}
+
+.tickets-items {
+    margin: 20px auto;
+    height: 37rem;
+    overflow: auto;
+}

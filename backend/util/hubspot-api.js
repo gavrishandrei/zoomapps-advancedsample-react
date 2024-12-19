@@ -77,6 +77,74 @@ const createTicket = async (accessToken, ticketDetailes) => {
   })
 }
 
+const createContact = async (accessToken, contactDetailes) => {
+  const propertiesObj = {
+      firstname: contactDetailes.firstName,
+      lastname: contactDetailes.lastName,
+      email: contactDetailes.email,
+      mobilephone: contactDetailes.phone,
+      phone: contactDetailes.phone
+  }
+
+  return await await axios({
+    url: 'https://api.hubapi.com/crm/v3/objects/contacts',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      Authorization: `Bearer ${accessToken}`
+    },
+    data: {properties: propertiesObj},
+  })
+}
+
+const updateTicket = async (accessToken, ticketDetailes) => {
+  const propertiesObj = {
+      subject: ticketDetailes.subject,
+      content: ticketDetailes.description,
+      hs_ticket_priority: ticketDetailes.priority,
+      hs_pipeline_stage: ticketDetailes.status
+  }
+  const updateTicketUrl = `https://api.hubapi.com/crm/v3/objects/tickets/${ticketDetailes.ticketId}`
+  return await await axios({
+    url: updateTicketUrl,
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      Authorization: `Bearer ${accessToken}`
+    },
+    data: {properties: propertiesObj},
+  })
+}
+
+const getTicketsList = async (accessToken, ticketDetailes) => {
+  const searchTicketsFilter = {
+    filterGroups:[
+      {
+        filters:[
+          {
+            propertyName: 'associations.contact',
+            operator: 'EQ',
+            value: ticketDetailes.contactId
+          }
+        ]
+      }
+    ]
+  }
+
+  return await await axios({
+    url: 'https://api.hubapi.com/crm/v3/objects/tickets/search',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      Authorization: `Bearer ${accessToken}`
+    },
+    data: JSON.stringify(searchTicketsFilter),
+  })
+}
+
 const createNotes = async (accessToken, notesBody) => {
   return await await axios({
     url: 'https://api.hubapi.com/crm/v3/objects/notes/batch/create',
@@ -102,11 +170,56 @@ const createDefaultAssociation = async (accessToken, associationDetailes) => {
   })
 }
 
+const getAccountInfo = async (accessToken) => {
+  return await await axios({
+    url: 'https://api.hubapi.com/account-info/v3/details',
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    },
+    data: {}
+  })
+}
+
+const searchRelatedToRecords = async (accessToken, searchDetailes) => {
+  // dealname
+  // name
+  const propertyName = searchDetailes.entity === 'deal' ? 'dealname' : 'name';
+  const searchEntityFilter = {
+    filterGroups:[
+      {
+        filters:[
+          {
+            propertyName: propertyName,
+            operator: 'CONTAINS_TOKEN',
+            value: `*${searchDetailes.searchTerm}*`
+          }
+        ]
+      }
+    ]
+  }
+  return await await axios({
+    url: `https://api.hubapi.com/crm/v3/objects/${searchDetailes.entity}/search`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      Authorization: `Bearer ${accessToken}`
+    },
+    data: JSON.stringify(searchEntityFilter),
+  })
+}
+
 module.exports = {
   exchangeHubSpotTokens,
   getAccessTokenByRefresh,
   getContactsByPhone,
   createTicket,
   createDefaultAssociation,
-  createNotes
+  createNotes, 
+  getTicketsList,
+  updateTicket,
+  getAccountInfo,
+  searchRelatedToRecords,
+  createContact
 }

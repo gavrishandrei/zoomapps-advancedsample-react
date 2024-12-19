@@ -128,8 +128,29 @@ module.exports = {
     }
   },
 
-  async createCrmTicket(req, res) {
+  async createCrmContact(req, res) {
     const zoomAccountId = req.body.zoomAccountId
+    const contactProperties = req.body.properties
+    try {
+      const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
+      const createContactResponse = await hubspotApi.createContact(accessToken, contactProperties)
+      console.log('!!! createContactResponse:', createContactResponse)
+      if (createContactResponse.status === 200 || createContactResponse.status === 201) {
+        res.json({type: 'success', message: 'Contact successfully created', data: createContactResponse.data})
+      } else {
+        res.json({type: 'danger', message: createContactResponse.statusText, data: ''})
+      }
+    } catch(error) {
+      res.json({type: 'danger', message: error, data: ''})
+    }
+    
+  },
+
+  async createCrmTicket(req, res) {
+    let relatedToAssociationStatus = 200;
+    const zoomAccountId = req.body.zoomAccountId
+    const relatedToEntity = req.body.relatedToEntity
+    const relatedToRecordId = req.body.relatedToRecordId
     const ticketProperties = req.body.properties
     try {
       const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
@@ -141,8 +162,79 @@ module.exports = {
         toObjectType: 'contact',
         toObjectId: ticketProperties.contactId
       }
-      await hubspotApi.createDefaultAssociation(accessToken, createDefaultAssociation)
+      const associationResp = await hubspotApi.createDefaultAssociation(accessToken, createDefaultAssociation)
+
+      if (relatedToEntity != null && relatedToRecordId != null) {
+        const createDefaultRelatedToAssociation = {
+          fromObjectType: 'ticket',
+          fromObjectId: getTicketResponse.data.id,
+          toObjectType: relatedToEntity,
+          toObjectId: relatedToRecordId
+        }
+        const relatedToAssociationResp = await hubspotApi.createDefaultAssociation(accessToken, createDefaultRelatedToAssociation)
+        relatedToAssociationStatus = relatedToAssociationResp.status
+      }
+      if (associationResp.status === 200 && getTicketResponse.status === 201 && relatedToAssociationStatus == 200) {
+        res.json({type: 'success', message: 'Ticket successfully created', data: getTicketResponse.data})
+      } else {
+        res.json({type: 'danger', message: getTicketResponse.statusText, data: ''})
+      }
+    } catch(error) {
+      res.json({type: 'danger', message: error, data: ''})
+    }
+    
+  },
+
+  async updateCrmTicket(req, res) {
+    const zoomAccountId = req.body.zoomAccountId
+    const ticketProperties = req.body.properties
+    try {
+      const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
+      const updateTicketResponse = await hubspotApi.updateTicket(accessToken, ticketProperties)
+      console.log('!updateTicketResponse:', updateTicketResponse)
+      if (updateTicketResponse.status === 200) {
+        res.json({type: 'success', message: 'Ticket successfully updated'})
+      } else {
+        res.json({type: 'danger', message: updateTicketResponse.statusText})
+      }
+    } catch(error) {
+      res.json({type: 'danger', message: error})
+    }
+    
+  },
+
+  async getCrmTickets(req, res) {
+    const zoomAccountId = req.body.zoomAccountId
+    const ticketProperties = req.body.properties
+    try {
+      const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
+      const getTicketResponse = await hubspotApi.getTicketsList(accessToken, ticketProperties)
       res.json(getTicketResponse.data)
+    } catch(error) {
+      console.log('!!!!! CRM Error:', error)
+    }
+    
+  },
+
+  async searchRelatedToRecords(req, res) {
+    const zoomAccountId = req.body.zoomAccountId
+    const searchProperties = req.body
+    try {
+      const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
+      const searchResponse = await hubspotApi.searchRelatedToRecords(accessToken, searchProperties)
+      res.json(searchResponse.data)
+    } catch(error) {
+      console.log('!!!!! CRM Error:', error)
+    }
+    
+  },
+
+  async getCrmAccountInfo(req, res) {
+    const zoomAccountId = req.query.zoomAccountId
+    try {
+      const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
+      const getAccountInfoResponse = await hubspotApi.getAccountInfo(accessToken)
+      res.json(getAccountInfoResponse.data)
     } catch(error) {
       console.log('!!!!! CRM Error:', error)
     }
@@ -158,38 +250,8 @@ module.exports = {
     console.log('SESSION:', req.session);
     console.log('req.body.href:', req.body.href);
     //const zoomAuthorizationCode = req.body.code
-    const currentUser = req.session.user;
     const engagementId = req.query.engagementId;
-    
-    // // not enough permission for contact center
-    // const appUser = await store.getUser(currentUser)
-    // console.log('!!!! appUser:', appUser);
-    // const { expired_at = 0, refreshToken = null } = appUser
-
-    // if (!refreshToken) {
-    //   console.log('Error: No refresh token saved for this user');
-    // }
-    // let accessToken = appUser.accessToken
-    // if (expired_at && Date.now() >= expired_at - 5000) {
-    //   try {
-    //     console.log('2. User access token expired')
-    //     console.log('2a. Refresh Zoom REST API access token')
-
-    //     const tokenResponse = await zoomApi.refreshZoomAccessToken(
-    //       appUser.refreshToken
-    //     )
-    //     accessToken = tokenResponse.data.access_token
-    //     console.log('2b. Save refreshed user token', accessToken)
-    //     await store.updateUser(currentUser, {
-    //       accessToken: tokenResponse.data.access_token,
-    //       refreshToken: tokenResponse.data.refresh_token,
-    //       expired_at: Date.now() + tokenResponse.data.expires_in * 1000,
-    //     })
-
-    //   } catch (error) {
-    //     console.log('Error refreshing user token.', error)
-    //   }
-    // }
+  
     try {
       const accessTokenResponse = await zoomApi.getBackendAccessToken()
       
@@ -205,47 +267,9 @@ module.exports = {
   async saveEngagementNotes(req, res) {
     const defaultAssociationTypeId = 228
     const defaultAssociationCategory = 'HUBSPOT_DEFINED'
-  //   "inputs": [
-  //   {
-  //     "associations": [
-  //       {
-  //         "types": [
-  //           {
-  //             "associationCategory": "HUBSPOT_DEFINED",
-  //             "associationTypeId": 228
-  //           }
-  //         ],
-  //         "to": {
-  //           "id": "17476182360"
-  //         }
-  //       }
-  //     ],
-  //     "properties": {
-  //       "hs_note_body": "sdvsdvsdvsdvsdv"
-  //     }
-  //   },
-  //   {
-  //     "associations": [
-  //       {
-  //         "types": [
-  //           {
-  //             "associationCategory": "HUBSPOT_DEFINED",
-  //             "associationTypeId": 228
-  //           }
-  //         ],
-  //         "to": {
-  //           "id": "17476182360"
-  //         }
-  //       }
-  //     ],
-  //     "properties": {
-  //       "hs_note_body": "seafsefsev11111"
-  //     }
-  //   }
-  // ]
     const engagementId = req.body.engagementId
     const zoomAccountId = req.body.zoomAccountId
-    const crmTicketIdId = req.body.crmTicketId
+    const crmTicketId = req.body.crmTicketId
     try {
       const accessTokenResponse = await zoomApi.getBackendAccessToken()
       const notesResponse = await zoomApi.getEngInfo(accessTokenResponse.data.access_token, engagementId)
@@ -261,7 +285,7 @@ module.exports = {
                 }
               ],
               to: {
-                id: crmTicketIdId
+                id: crmTicketId
               }
             }
           ],
@@ -271,7 +295,6 @@ module.exports = {
         }
       })
       const crmNoteBody = {inputs: noteProperties}
-      console.log('!!!! crmNoteBody:', crmNoteBody)
       const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
       const getTicketResponse = await hubspotApi.createNotes(accessToken, crmNoteBody)
       res.json(getTicketResponse.data)
@@ -350,7 +373,7 @@ module.exports = {
   installHubSpot(req, res) {
     const zoomAccountId = req.query.accountId
     console.log('zoomAccountId:', req.query);
-    const hubspotScopes = 'crm.objects.contacts.read, oauth, tickets';
+    const hubspotScopes = 'crm.objects.companies.read, crm.objects.contacts.read, crm.objects.contacts.write, crm.objects.deals.read, oauth, tickets';
     const SCOPES = (hubspotScopes.split(/ |, ?|%20/)).join(' ')
     const redirectUrl = `${process.env.PUBLIC_URL}/api/zoomapp/hubspotOauthCallback?accountId=${zoomAccountId}`
     const authUrl =
