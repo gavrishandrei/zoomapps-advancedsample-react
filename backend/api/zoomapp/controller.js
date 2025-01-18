@@ -229,6 +229,35 @@ module.exports = {
     
   },
 
+  async searchCrmContacts(req, res) {
+    const zoomAccountId = req.body.zoomAccountId
+    const searchProperties = req.body
+    try {
+      const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
+      const searchResponse = await hubspotApi.searchContacts(accessToken, searchProperties)
+      res.json(searchResponse.data)
+    } catch(error) {
+      console.log('!!!!! CRM Error:', error)
+    }
+    
+  },
+
+  async updateCrmContact(req, res) {
+    const zoomAccountId = req.body.zoomAccountId
+    const contactDetailes = req.body
+    try {
+      const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
+      const updateContactResponse = await hubspotApi.updateContact(accessToken, contactDetailes)
+      if (updateContactResponse.status === 200) {
+        res.json({type: 'success', message: 'Contact successfully updated'})
+      } else {
+        res.json({type: 'danger', message: updateContactResponse.statusText})
+      }
+    } catch(error) {
+      res.json({type: 'danger', message: error})
+    } 
+  },
+
   async getCrmAccountInfo(req, res) {
     const zoomAccountId = req.query.zoomAccountId
     try {
@@ -273,8 +302,11 @@ module.exports = {
     try {
       const accessTokenResponse = await zoomApi.getBackendAccessToken()
       const notesResponse = await zoomApi.getEngInfo(accessTokenResponse.data.access_token, engagementId)
-      console.log('!!! notesResponse:', notesResponse.data.notes)
-      const noteProperties = notesResponse.data.notes.map(noteItem => {
+
+      const maxRetries = 3
+      const retryDelay = 3000 // 3 seconds
+      const chatDetailes = await zoomApi.getChatDetailesRetry(accessTokenResponse.data.access_token, engagementId, maxRetries, retryDelay)
+      let noteProperties = notesResponse.data.notes.map(noteItem => {
         return {
           associations: [
             {
@@ -294,6 +326,26 @@ module.exports = {
           }
         }
       })
+
+      const chatNoteProperty = {
+          associations: [
+            {
+              types: [
+                {
+                  associationCategory: defaultAssociationCategory,
+                  associationTypeId: defaultAssociationTypeId
+                }
+              ],
+              to: {
+                id: crmTicketId
+              }
+            }
+          ],
+          properties: {
+            hs_note_body: chatDetailes.data.replace(/\n/g, '<br>')
+          }
+      }
+      noteProperties.push(chatNoteProperty)
       const crmNoteBody = {inputs: noteProperties}
       const accessToken = await hubspotApi.getAccessTokenByRefresh(zoomAccountId)
       const getTicketResponse = await hubspotApi.createNotes(accessToken, crmNoteBody)

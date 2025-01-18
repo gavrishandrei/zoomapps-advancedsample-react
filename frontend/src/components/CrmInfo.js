@@ -47,7 +47,11 @@ export const CrmInfo = forwardRef((props, ref) => {
 
   const [searchTicketsTerm, setSearchTicketsTerm] = useState('');
   const [searchRelatedToTerm, setSearchRelatedToTerm] = useState('');
+  const [searchContactTerm, setSearchContactTerm] = useState('');
   
+
+  const [searchedContacts, setSearchedContacts] = useState([]);
+  const [selectedSearchedContact, setSelectedSearchedContact] = useState(null);
   const [relatedToRecords, setRelatedToRecords] = useState([]);
   const [selectedRelatedToRecord, setSelectedRelatedToRecord] = useState(null);
   const [relatedTickets, setRelatedTickets] = useState([]);
@@ -56,8 +60,13 @@ export const CrmInfo = forwardRef((props, ref) => {
   const [activeRelatedTicketId, setActiveRelatedTicketId] = useState(null);
   const [showToast, setShowToast] = useState(false);
   const [toastObject, setToastObject] = useState('{}');
+
+
   const [searchTicketsTimeout, setSearchTicketsTimeout] = useState(null);
   const [searchRelatedToTimeout, setSearchRelatedToTimeout] = useState(null);
+  const [searchContactTimeout, setSearchContactTimeout] = useState(null);
+
+
   const [crmAccountInfo, setCrmAccountInfo] = useState({});
 
   const [selectedRelatedToItem, setSelectedRelatedToItem] = useState(relatedToItems[0]);
@@ -66,6 +75,78 @@ export const CrmInfo = forwardRef((props, ref) => {
     lastName: '',
     email: ''
   });
+
+  const [isDisableNewTicketTab, setIsDisableNewTicketTab] = useState(false);
+  const [isDisableExistingTicketsTab, setIsDisableExistingTicketsTab] = useState(false);
+
+
+  const selectContact = async (record) => {
+    setSelectedSearchedContact(record);
+    setSearchContactTerm(record.properties.name);
+
+    const updateContactBody = JSON.stringify(
+      {
+        zoomAccountId: zoomAccountId,
+        contactId: record.properties.hs_object_id,
+        properties: {
+          phone: phoneNumber
+        }
+      }
+    );
+
+    const updateCrmContactResp = await (await fetch(
+      '/api/zoomapp/updateCrmContact',
+      {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: updateContactBody
+      })
+    ).json();
+    if (updateCrmContactResp.type === 'danger') {
+      setToastObject({message: updateCrmContactResp.message, type: updateCrmContactResp.type});
+      setShowToast(true);
+    } else {
+      setContact(record.properties);
+      getCrmRelatedTickets(zoomAccountId, record.properties);
+
+    }
+  }
+  const handleSearchContact = async (event) => {
+    setSelectedSearchedContact(null);
+    const searchContactTerm = event.target.value;
+    setSearchContactTerm(searchContactTerm);
+    window.clearTimeout(searchContactTimeout);
+    const searchTimeout = setTimeout(async () => {
+      if (searchContactTerm) {
+        const getContactsBody = JSON.stringify(
+          {
+            zoomAccountId: zoomAccountId, 
+            searchTerm: searchContactTerm
+          }
+        );
+        const getCrmContactsResp = await (await fetch(
+          '/api/zoomapp/searchCrmContacts',
+          {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            body: getContactsBody
+          })
+        ).json();
+        setSearchedContacts(getCrmContactsResp.results);
+        
+      } else {
+        setSearchedContacts([]);
+      }
+    }, 600);
+    setSearchContactTimeout(searchTimeout);
+
+  }
 
   const handleChangeContactForm = (event) => {
     const { name, value } = event.target;
@@ -125,9 +206,17 @@ export const CrmInfo = forwardRef((props, ref) => {
 
   const handleToggle = (id) => {
     setActiveRelatedTicketId(activeRelatedTicketId === id ? null : id);
+    const currentTicket = relatedTickets.find(ticket => ticket.id === id);
+    const selectedFormElement = document.getElementById(currentTicket.properties.subject);
+    selectedFormElement.focus();
+
   };
 
   const saveTicket = async (event) => {
+    if (ticketId) {
+      updateNewTicket();
+      return;
+    }
     const ticketBody = JSON.stringify(
       {
         zoomAccountId: zoomAccountId,
@@ -157,9 +246,12 @@ export const CrmInfo = forwardRef((props, ref) => {
     setToastObject({message: createCrmTicketResp.message, type: createCrmTicketResp.type});
     setShowToast(true);
     setTicketId(createCrmTicketResp.data?.id);
+    if (createCrmTicketResp.data?.id) {
+      setIsDisableExistingTicketsTab(true);
+    }
   }
 
-  const updateTicket = async (event) => {
+  const updateExistingTicket = async (event) => {
     const currentTicket = relatedTickets.find(ticketItem => ticketItem.id === activeRelatedTicketId);
     const ticketBody = JSON.stringify(
       {
@@ -187,15 +279,47 @@ export const CrmInfo = forwardRef((props, ref) => {
     ).json();
     setToastObject({message: updateCrmTicketResp.message, type: updateCrmTicketResp.type});
     setShowToast(true);
-    //setTicketId(createCrmTicketResp.id);
+    setTicketId(activeRelatedTicketId);
+    setRelatedTickets([currentTicket]);
+    setIsDisableNewTicketTab(true);
+  }
+
+  const updateNewTicket = async () => {
+    const ticketBody = JSON.stringify(
+      {
+        zoomAccountId: zoomAccountId,
+        properties: {
+          ticketId: ticketId,
+          contactId: contact.hs_object_id,
+          subject: subject, 
+          description: description,
+          priority: selectedPriorityItem.value,
+          status: selectedStatusItem.value
+        }
+      }
+    );
+
+    const updateCrmTicketResp = await (await fetch(
+      '/api/zoomapp/updateCrmTicket',
+      {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: ticketBody
+      })
+    ).json();
+    setToastObject({message: updateCrmTicketResp.message, type: updateCrmTicketResp.type});
+    setShowToast(true);
   }
 
   const selectRelatedToRecord = async (record) => {
     setSelectedRelatedToRecord(record);
     const recordName = record.properties.name ? record.properties.name : record.properties.dealname;
     setSearchRelatedToTerm(recordName);
-
   }
+
   const handleSearchRelatedToChange = async (event) => {
     setSelectedRelatedToRecord(null);
     const searchRelatedToTerm = event.target.value;
@@ -468,16 +592,41 @@ export const CrmInfo = forwardRef((props, ref) => {
                   Open in CRM
                 </Button>
               ) : (
-                <Button variant="primary" onClick={showNewRecordForm} style={{float: 'right'}}>
-                  Create Contact
-                </Button>
+                <>
+                  <Button variant="primary" onClick={showNewRecordForm} style={{float: 'right'}}>
+                    Create Contact
+                  </Button>
+                </>
               )
             }
             
           </Card.Title>
           <Card.Text>
-              <p>Email: {contact.email}</p> 
-              <p>Phone Number: {phoneNumber}</p> 
+            {
+              contact.hs_object_id ? (
+                <p>Email: {contact.email}</p> 
+              ) : (
+                <>
+                  <div className="search-dropdown">
+                    <Form.Control
+                      type="text"
+                      placeholder="Search contact..."
+                      value={searchContactTerm}
+                      onChange={handleSearchContact}
+                    />
+                    {searchedContacts.length > 0 && !selectedSearchedContact && (<Dropdown.Menu show>
+                      {searchedContacts.map((contact, index) => (
+                        <Dropdown.Item key={index} onClick={() => selectContact(contact)}>
+                          {contact.properties.firstname} {contact.properties.lastname}
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Menu>
+                    )}  
+                  </div>
+                </>
+              )
+            }
+            <p style={{"padding-top": "1rem"}}>Phone Number: {phoneNumber}</p> 
           </Card.Text>
         </Card.Body>
       </Card>
@@ -487,7 +636,7 @@ export const CrmInfo = forwardRef((props, ref) => {
           id="uncontrolled-tab-example"
           className="mb-3 tab-custom"
         >
-        <Tab eventKey="newTicket" title="New Ticket">
+        <Tab eventKey="newTicket" title="New Ticket" disabled={isDisableNewTicketTab}>
           <Accordion defaultActiveKey="1">
             <Accordion.Item eventKey="0">
               <Accordion.Header>Associations</Accordion.Header>
@@ -615,8 +764,8 @@ export const CrmInfo = forwardRef((props, ref) => {
             </Button>
           </Container>
         </Tab>
-        <Tab eventKey="profile" title="Existing Tickets">
-          <div style={{ width: "400px", margin: "2rem auto" }}>
+        <Tab eventKey="profile" title="Existing Tickets" disabled={isDisableExistingTicketsTab}>
+          <div style={{ width: "400px", margin: "1rem auto" }}>
             <Form.Control
               type="text"
               placeholder="Search..."
@@ -719,7 +868,7 @@ export const CrmInfo = forwardRef((props, ref) => {
                         </Form>
                       </Container>
                       <Container className="mt-2">
-                        <Button variant="primary" onClick={updateTicket} style={{float: "right"}}>Update Ticket</Button>
+                        <Button id={ticket.properties.subject} variant="primary" onClick={updateExistingTicket} style={{float: "right"}}>Update/Assign Ticket</Button>
                       </Container>
                     </Card.Body>
                   </Accordion.Collapse>

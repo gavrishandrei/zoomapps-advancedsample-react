@@ -210,6 +210,36 @@ const searchRelatedToRecords = async (accessToken, searchDetailes) => {
   })
 }
 
+const searchContacts = async (accessToken, searchDetailes) => {
+  const searchQuery = {
+    query: searchDetailes.searchTerm
+  }
+  return await await axios({
+    url: `https://api.hubapi.com/crm/v3/objects/contacts/search`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      Authorization: `Bearer ${accessToken}`
+    },
+    data: JSON.stringify(searchQuery),
+  })
+}
+
+const updateContact = async (accessToken, contactDetailes) => {
+  const updateTicketUrl = `https://api.hubapi.com/crm/v3/objects/contacts/${contactDetailes.contactId}`
+  return await await axios({
+    url: updateTicketUrl,
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      Authorization: `Bearer ${accessToken}`
+    },
+    data: {properties: contactDetailes.properties},
+  })
+}
+
 module.exports = {
   exchangeHubSpotTokens,
   getAccessTokenByRefresh,
@@ -221,5 +251,7 @@ module.exports = {
   updateTicket,
   getAccountInfo,
   searchRelatedToRecords,
-  createContact
+  createContact,
+  searchContacts,
+  updateContact
 }

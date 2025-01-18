@@ -23,5 +23,7 @@ router
   .get('/getCrmAccountInfo', controller.getCrmAccountInfo)
   .post('/searchRelatedToRecords', controller.searchRelatedToRecords)
   .post('/createCrmContact', controller.createCrmContact)
+  .post('/searchCrmContacts', controller.searchCrmContacts)
+  .post('/updateCrmContact', controller.updateCrmContact)
 
 module.exports = router

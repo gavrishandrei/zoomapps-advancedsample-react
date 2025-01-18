@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 const axios = require('axios')
 const zoomHelpers = require('./zoom-helpers')
 
@@ -117,6 +118,32 @@ const getEngagementNotes = async (accessToken, engagementId) => {
   })
 }
 
+const getChatDetailesRetry = async (accessToken, engagementId, retries, delay) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const url = `${process.env.ZOOM_HOST}/v2/contact_center/engagements/transcripts/download/${engagementId}`
+      return await axios({
+        url: url,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+    } catch (error) {
+      console.error(`Attempt ${attempt} failed: ${error.message}`);
+
+      if (attempt === retries) {
+        console.error('All attempts failed');
+        throw error;
+      }
+
+      console.log(`Retrying in ${delay} ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
 module.exports = {
   getZoomAccessToken,
   refreshZoomAccessToken,
@@ -124,5 +151,6 @@ module.exports = {
   getZoomUser,
   getEngInfo,
   getDeeplink,
-  getEngagementNotes
+  getEngagementNotes,
+  getChatDetailesRetry
 }

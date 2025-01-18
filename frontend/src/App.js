@@ -7,6 +7,7 @@ import { apis } from "./apis";
 import { CrmInfo } from "./components/CrmInfo";
 import { Authorization } from "./components/Authorization";
 import AuthHubspotUser from "./components/AuthHubspotUser";
+import CrmConnector from "./components/CrmConnector";
 import ApiScrollview from "./components/ApiScrollview";
 // import { authorize } from "./zoomEndpoints";
 
@@ -143,6 +144,9 @@ function App() {
           console.log('!!!! engagementResponse:', engagementResponse);
           const engagementFullResponse = await (await fetch(`/api/zoomapp/getEngagementDetails?engagementId=${engagementResponse.engagementContext.engagementId}`)).json();
           console.log('!!!! engagementFullResponse', engagementFullResponse);
+
+          const engVariablesResponse = await zoomSdk.getEngagementVariableValue({engagementId: engagementResponse.engagementContext.engagementId});
+          console.log('!!!! engagementVars:', engVariablesResponse);
           setConsumer(engagementFullResponse);
 
         }
@@ -179,12 +183,14 @@ function App() {
   if (runningContext === 'inMainClient' && isCrmConnected) {
     return (
       <div className="App">
+          <CrmConnector/>
           <AuthHubspotUser user={user}/>
       </div>
     )
   } else if (runningContext === 'inMainClient' && !isCrmConnected) {
     return (
       <div className="App">
+          <CrmConnector/>
           <AuthHubspotUser user={user}/>
       </div>
     );
