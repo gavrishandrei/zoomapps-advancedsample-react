@@ -422,6 +422,45 @@ module.exports = {
     res.redirect(redirectUrl)
   },
 
+  installChatBot(req, res) {
+    console.log(
+      'INSTALL HANDLER ==========================================================',
+      '\n'
+    )
+    // 1. Generate and save a random state value for this browser session
+    req.session.state = zoomHelpers.generateState()
+    console.log(
+      '1. Begin add app - generated state for zoom auth and saved:',
+      req.session.state,
+      '\n'
+    )
+
+    // 2. Create a redirect url, eg: https://zoom.us/oauth/authorize?client_id=XYZ&response_type=code&redirect_uri=https%3A%2F%2Fmydomain.com%2Fapi%2Fzoomapp%2Fauth&state=abc...
+    // 2a. Set domain (with protocol prefix)
+    const domain = process.env.ZOOM_HOST // https://zoom.us
+
+    // 2b. Set path
+    const path = 'oauth/authorize'
+
+    // 2c. Create the request params
+    const params = {
+      redirect_uri: 'https://97c6c0853838.ngrok.app/api/zoomapp/authChatBot',
+      response_type: 'code',
+      client_id: 'BAoNTIn5Qd2PHiuHdclLew',
+      state: req.session.state, // save state on this cookie-based session, to verify on return
+    }
+
+    const authRequestParams = zoomHelpers.createRequestParamString(params)
+
+    // 2d. Concatenate
+    const redirectUrl = domain + '/' + path + '?' + authRequestParams
+    console.log('2. Redirect url to authenticate to Zoom:', redirectUrl, '\n')
+
+    // 3. Redirect to url - the user can authenticate and authorize the app scopes securely on zoom.us
+    console.log('3. Redirecting to redirect url', '\n')
+    res.redirect(redirectUrl)
+  },
+
   installHubSpot(req, res) {
     const zoomAccountId = req.query.accountId
     console.log('zoomAccountId:', req.query);
@@ -577,6 +616,105 @@ module.exports = {
     }
   },
 
+  async authChatBot(req, res, next) {
+    console.log(
+      'ZOOM OAUTH REDIRECT HANDLER  ==============================================',
+      '\n'
+    )
+    console.log(
+      '1. Handling redirect from zoom.us with code and state following authentication to Zoom',
+      '\n'
+    )
+    // 1. Validate code and state
+    const zoomAuthorizationCode = req.query.code
+    const zoomAuthorizationState = req.query.state
+    const zoomState = req.session.state
+
+    // For security purposes, delete the browser session
+    req.session.destroy()
+
+    // 1a. Check for auth code as parameter on response from zoom.us
+    if (!zoomAuthorizationCode) {
+      const error = new Error('No authorization code was provided')
+      error.status = 400
+      return next(error)
+    }
+
+    console.log('1a. code param exists:', req.query.code, '\n')
+
+    // 1b. Validate the state parameter is the same as the one we sent
+    if (!zoomAuthorizationState || zoomAuthorizationState !== zoomState) {
+      const error = new Error('Invalid state parameter')
+      error.status = 400
+      return next(error)
+    }
+
+    console.log(
+      '1b. state param is correct/matches ours:',
+      req.query.state,
+      '\n'
+    )
+
+    try {
+      console.log('2. Getting Zoom access token and user', '\n')
+      // 2. Get and remember Zoom access token and Zoom user
+      // 2a. Exchange Zoom authorization code for tokens
+      const tokenResponse = await zoomApi.getZoomAccessToken(
+        zoomAuthorizationCode
+      )
+      const zoomAccessToken = tokenResponse.data.access_token
+      console.log(
+        '2a. Use code to get Zoom access token - response data: ',
+        tokenResponse.data,
+        '\n'
+      )
+      // other fields on token response:
+      // tokenResponse.data.refresh_token
+      // tokenResponse.data.expires_in
+
+      // 2b. Get Zoom user info from Zoom API
+      console.log('!!! zoomAccessToken: ', zoomAccessToken);
+      const userResponse = await zoomApi.getZoomUser(zoomAccessToken)
+      const zoomUserId = userResponse.data.id
+
+      console.log(
+        '2b. Use access token to get Zoom user - response data: ',
+        userResponse.data,
+        '\n'
+      )
+
+      console.log(
+        '2c. Save the tokens in the store so we can look them up when the Zoom App is opened'
+      )
+
+      // 2c. Save the tokens in the store so we can look them up when the Zoom App is opened:
+      // When the home url for the app is requested on app open in the Zoom client,
+      // the user id (uid field) is in the decrypted x-zoom-app-context header of the GET request
+      await store.upsertUser(
+        zoomUserId +'_chatbot',
+        tokenResponse.data.access_token,
+        tokenResponse.data.refresh_token,
+        Date.now() + tokenResponse.data.expires_in * 1000
+      )
+
+      // 3. Get deeplink from Zoom API
+      const deepLinkResponse = await zoomApi.getDeeplink(zoomAccessToken)
+      const deeplink = deepLinkResponse.data.deeplink
+
+      console.log(
+        '3. Generated deeplink from Zoom API using access token: ',
+        deeplink,
+        '\n'
+      )
+      console.log('4. Redirecting to Zoom client via deeplink . . .', '\n')
+
+      // 4. Redirect to deep link to return user to the Zoom client
+      res.redirect(deeplink)
+    } catch (error) {
+      return next(error)
+    }
+  },
+
   // ZOOM APP HOME URL HANDLER ==================================================
   // This route is called when the app opens
   home(req, res, next) {
@@ -614,6 +752,24 @@ module.exports = {
     // 4. Redirect to frontend
     console.log('4. Redirect to frontend', '\n')
     res.redirect('/api/zoomapp/proxy')
+  },
+
+  async sendChatBotMessage(req, res) {
+    try {
+      // const user = await store.getUser('f9bFjeR1SsecD5OYh1YVQA')
+      // user.refreshToken
+
+      // const tokenResponse = await zoomApi.refreshZoomAccessToken(
+      //   user.refreshToken
+      // )
+      // console.log('!!! tokenResponse:', tokenResponse.data)
+      const tokenResponse = await zoomApi.getChatBotAccessToken()
+      console.log('tokenResponse:', tokenResponse.data)
+      const sendApprovalMessageResponse = await zoomApi.sendApprovalMessage(tokenResponse.data.access_token)
+      console.log('!!! sendApprovalMessageResponse:', sendApprovalMessageResponse.data)
+    } catch (error) {
+      console.log('ZOOM API ERROR:', error)
+    }
   },
 
   // FRONTEND PROXY ===========================================================

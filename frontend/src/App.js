@@ -139,6 +139,8 @@ function App() {
           console.log('!!!! New onAuthorized:', data);
         });
         
+        const appContext = await zoomSdk.getAppContext();
+        console.log('!APP CONTEXT:', appContext);
         if (configResponse.runningContext === 'inContactCenter') {
           const engagementResponse = await zoomSdk.getEngagementContext();
           console.log('!!!! engagementResponse:', engagementResponse);

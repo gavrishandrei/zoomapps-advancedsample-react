@@ -6,6 +6,8 @@ router
   .use('/sockjs-node', controller.proxy)
   .get('/install', controller.install)
   .get('/auth', controller.auth)
+  .get('/installChatBot', controller.installChatBot)
+  .get('/authChatBot', controller.authChatBot)
   .get('/home', controller.home)
   .get('/authorize', controller.inClientAuthorize)
   .get('/getEngagementInfo', controller.getEngagementInfo)
@@ -25,5 +27,6 @@ router
   .post('/createCrmContact', controller.createCrmContact)
   .post('/searchCrmContacts', controller.searchCrmContacts)
   .post('/updateCrmContact', controller.updateCrmContact)
+  .get('/sendTestMessage', controller.sendChatBotMessage)
 
 module.exports = router
